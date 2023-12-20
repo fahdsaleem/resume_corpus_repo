@@ -13,7 +13,7 @@ def create_delta_tables():
     """
     spark.sql('''
     create or replace table normalized_classes (
-    job_titles stringg,
+    job_titles string,
     job_label string
     )
     using delta 
