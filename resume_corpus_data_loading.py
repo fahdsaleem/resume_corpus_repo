@@ -59,14 +59,30 @@ def load_normalized_classes():
     spark.sql('optimize normalized_classes zorder by (job_label)')
     # viewing data loaded in delta table
     display(spark.sql('select * from normalized_classes '))
+
+def extract_tag_info(resume_df,tag,new_field_name):
+    """ Extract the text description between tags
+
+    Arguments:
+    resume_df : dataframe with resume field
+    tag : tag from where info will be extracted
+    new_field_name : extracted info 
     
+    Returns :
+    dataframe with extracted info in new_field_name
+    
+    """
+    from pyspark.sql.functions import regexp_extract_all,lit,concat_ws
+    pattern = '<'+tag+'(.+?)>(.+?)<\\/'+tag+'>'
+    return(resume_df.withColumn(new_field_name,concat_ws(' ',regexp_extract_all(resume_df.resume,lit(pattern),2))))
+
 def load_resume_corpus():
     """ Load the resume_corpus partitioned table using .lab and .txt file. 
 
     Arguments:
     n.a: No arguments passed
     """
-    from pyspark.sql.functions import input_file_name, split, reverse, regexp_replace, regexp_extract_all,lit,concat_ws,current_timestamp
+    from pyspark.sql.functions import input_file_name, split, reverse, regexp_replace,current_timestamp
     resume_corpus_labels_sourcefiles ='dbfs:/resumes_corpus/*.lab'
     resume_corpus_sourcefiles ='dbfs:/resumes_corpus/*.txt'
     #resume_corpus_labels_sourcefiles='file:/Workspace/Users/fahd.saleem@gmail.com/*.lab'
@@ -96,9 +112,8 @@ def load_resume_corpus():
     # display(resume_corpus_final_df)
 
     # extracting job titles from resume fields
-    tag = 'span'
-    pattern = '<'+tag+'(.+?)>(.+?)<\\/'+tag+'>'
-    resume_corpus_final_df=resume_corpus_final_df.withColumn('job_title',concat_ws(' ',regexp_extract_all(resume_corpus_final_df.resume,lit(pattern),2)))
+    tag = 'span'    
+    resume_corpus_final_df=extract_tag_info(resume_corpus_final_df,tag ,'job_title')
     resume_corpus_final_df=resume_corpus_final_df.withColumn('created_at',current_timestamp() )
     #display(resume_corpus_final_df)
     # saving data in resume_corpus delta table  
